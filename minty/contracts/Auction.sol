@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity ^0.7.3;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -28,7 +28,7 @@ contract Auction {
     event List(
         address indexed lister,
         address indexed nft,
-        address indexed nftId,
+        uint256 indexed nftId,
         uint256 listingId,
         uint256 minPrice,
         uint256 endTime,
@@ -40,22 +40,12 @@ contract Auction {
         _;
     }
 
-    modifier isOwner(uint256 nftId) {
-        require(nft.ownerOf(nftId) == msg.sender, "You do not own this nft");
-        _;
-    }
-
-    modifier hasNFTAccess(uint256 nftId) {
-        require(nft.getApproved(nftId) == address(this), "This contract is not approved to access this nft");
-        _;
-    }
-
     function onERC721Received(
         address operator,
         address from,
         uint256 tokenId,
         bytes calldata data
-    ) public view returns (bytes4) {
+    ) public returns (bytes4) {
         // Called every time a nft is transfered using IERC721.safeTransferFrom;
         return IERC721Receiver.onERC721Received.selector;
     }
@@ -70,16 +60,19 @@ contract Auction {
     }
 
     function list(
-        IERC721 nft,
+        address nft,
         uint256 nftId,
         uint256 minPrice,
         uint256 numHours
-    ) isOwner(nftId) hasNFTAccess(nftId) {
-        nft.safeTransferFrom(msg.sender, address(this), nftId);
+    ) external {
+        IERC721 nftContract = IERC721(nft);
+        require(nftContract.ownerOf(nftId) == msg.sender, "You do not own this nft");
+        require(nftContract.getApproved(nftId) == address(this), "This contract is not approved to access this nft");
+        nftContract.safeTransferFrom(msg.sender, address(this), nftId);
 
         Listing storage listing = listings[nextListingId];
-        listing.nft = nft;
-        lising.nftId = nftId;
+        listing.nft = nftContract;
+        listing.nftId = nftId;
         listing.minPrice = minPrice;
         listing.endTime = block.timestamp + (numHours * 1 hours);
         listing.owner = msg.sender;
