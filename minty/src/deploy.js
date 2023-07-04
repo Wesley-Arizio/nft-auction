@@ -15,10 +15,27 @@ async function deployContract(name, symbol) {
     const Minty = await hardhat.ethers.getContractFactory(CONTRACT_NAME)
     const minty = await Minty.deploy(name, symbol)
 
+    const Auction = await hardhat.ethers.getContractFactory("Auction");
+    const auction = await Auction.deploy();
+
     await minty.deployed()
+    await auction.deployed();
     console.log(`deployed contract for token ${name} (${symbol}) to ${minty.address} (network: ${network})`);
 
+    await writeDeploymentFile(auction, "auction.json")
     return deploymentInfo(hardhat, minty)
+}
+
+async function writeDeploymentFile(contract, filename = "") {
+    const data = JSON.stringify({
+        contract: {
+            address: contract.address,
+            signerAddress: contract.signer.address,
+            abi: contract.interface.format()
+        }
+    }, null, 2);
+    await fs.writeFile(filename, data, { encoding: "utf-8" });
+
 }
 
 function deploymentInfo(hardhat, minty) {
